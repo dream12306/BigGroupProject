@@ -152,39 +152,86 @@ def update(opt, model, cap, device, half, tracker, imgsz, stride, count, names, 
 
 
 def on_click_left(event):
-    pass
+    global boxes_tlwhs
+    global boxes_ids
+    global tp_ids
+    global unconfirmed_tp_ids
+    if event.num == 1:
+        event.x, event.y = Mouse_Coordinate_Conversion(event.x, event.y)
+        for i, box in enumerate(boxes_tlwhs):
+            x1, y1 = box[0:2]
+            x2 = x1 + box[2]
+            y2 = y1 + box[3]
+            if (x1 < event.x < x2 and y1 < event.y < y2):
+                if boxes_ids[i] not in tp_ids and boxes_ids[i] not in unconfirmed_tp_ids:
+                    tp_ids.append(boxes_ids[i])
+                    print('123456')
+                    break
 
 
 def on_click_right(event):
-    pass
+    global boxes_tlwhs
+    global boxes_ids
+    global tp_ids
+    global unconfirmed_tp_ids
+    global unconfirmed_tp_ids_state
 
+    if event.num == 3:
+        event.x, event.y = Mouse_Coordinate_Conversion(event.x, event.y)
+        for i, box in enumerate(boxes_tlwhs):
+            x1, y1 = box[0:2]
+            x2 = x1 + box[2]
+            y2 = y1 + box[3]
+            if (x1 < event.x < x2 and y1 < event.y < y2):
+                if boxes_ids[i] in tp_ids:
+                    tp_ids.remove(boxes_ids[i])
+                    break
+                elif boxes_ids[i] in unconfirmed_tp_ids:
+                    del unconfirmed_tp_ids_state[unconfirmed_tp_ids.index(boxes_ids[i])]
+                    unconfirmed_tp_ids.remove(boxes_ids[i])
+                    break
 
 def track_all():
-    pass
-
+    global boxes_tlwhs
+    global boxes_ids
+    global tp_ids
+    global unconfirmed_tp_ids_state
+    global unconfirmed_tp_ids
+    for i,box in enumerate(boxes_tlwhs):
+        if boxes_ids[i] not in tp_ids and boxes_ids[i] not in unconfirmed_tp_ids:
+            tp_ids.append(boxes_ids[i])
 
 # 取消跟踪
 def cancel_tracking():
-    pass
+    global tp_ids
+    global unconfirmed_tp_ids
+    global unconfirmed_tp_ids_state
+    tp_ids = []
+    unconfirmed_tp_ids_state = []
+    unconfirmed_tp_ids = []
 
 
 # 取消放大
 def cancel_zoom():
-    pass
+    global big_state
+    big_state = 0
+
 
 
 # 放大模式
 def zoom():
-    pass
-
+    global big_state
+    big_state = 1
 
 def track_human():
-    pass
-
+    global mode
+    mode = 0
+    print('humanonly')
 
 def track_everything():
-    pass
-
+    global mode
+    mode = 1
+    print('everything')
 
 def detect():
     print('++++++++++++++++++')
