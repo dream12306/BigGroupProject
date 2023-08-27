@@ -12,12 +12,12 @@ import torch.backends.cudnn as cudnn
 from numpy import random
 import numpy as np
 import tkinter as tk
-from PIL import Image, ImageTk
-import copyOfWebcam
+from PIL import Image,ImageTk
+import copy
 
 from yolov7.models.experimental import attempt_load
 from yolov7.utils.datasets import letterbox
-from yolov7.utils.general import check_img_size, non_max_suppression, scale_coords, strip_optimizer, set_logging
+from yolov7.utils.general import check_img_size, non_max_suppression,scale_coords, strip_optimizer, set_logging
 from yolov7.utils.plots import plot_one_box
 from yolov7.utils.torch_utils import select_device, time_synchronized, TracedModel
 
@@ -25,6 +25,7 @@ from tracker.mc_bot_sort import BoTSORT
 
 sys.path.insert(0, './yolov7')
 sys.path.append('.')
+
 
 boxes_tlwhs = []
 boxes_ids = []
@@ -35,8 +36,8 @@ offset_x = 0
 offset_y = 0
 big_state = 1
 zoom_factor = 1
-size = (640, 480)
-mode = 1  # everything:1,humanonly:0
+size = (640,480)
+mode = 1 # everything:1,humanonly:0
 
 
 def magnify(boxes_ids, boxes_tlwhs, tp_ids, Label, img):
@@ -136,7 +137,6 @@ def magnify(boxes_ids, boxes_tlwhs, tp_ids, Label, img):
 
     return Label, img
 
-
 def Mouse_Coordinate_Conversion(x,y):
     global big_state
     global zoom_factor
@@ -147,9 +147,128 @@ def Mouse_Coordinate_Conversion(x,y):
     return x, y
 
 
-def update(opt, model, cap, device, half, tracker, imgsz, stride, count, names, colors, window, Label):
-    pass
+def update(opt,model,cap,device,half,tracker,imgsz,stride,count,names,colors,window,Label):
+    global boxes_tlwhs
+    global boxes_ids
+    global tp_ids
+    global unconfirmed_tp_ids
+    global  unconfirmed_tp_ids_state
+    global mode
+    count = count + 1
+    if(count % 30 == 0):
+        print(count)
+    ret,frame = cap.read()
+    if not ret:
+        cap.release()  # 释放相机资源
+        cv2.destroyAllWindows()  # 关闭所有窗口
+        print('camera close')
+        return
+    im0s = np.asarray(frame)
 
+    img = letterbox(img=im0s,new_shape=imgsz,stride=stride)[0]
+    img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
+    img = np.ascontiguousarray(img)
+    img = torch.from_numpy(img).to(device)
+    img = img.half() if half else img.float()  # uint8 to fp16/32
+    img /= 255.0  # 0 - 255 to 0.0 - 1.0
+    if img.ndimension() == 3:
+        img = img.unsqueeze(0)
+
+    # Inference
+    t1 = time_synchronized()
+    pred = model(img, augment=opt.augment)[0]
+
+    if mode:
+        opt.classes = None
+    else:
+        opt.classes = [0]
+
+
+
+    # Apply NMS
+    pred = non_max_suppression(pred, opt.conf_thres, opt.iou_thres, classes=opt.classes, agnostic=opt.agnostic_nms)
+    t2 = time_synchronized()
+
+    # Process detections
+    results = []
+    i = 0
+    det = pred[0]
+    s, im0, frame = '%g: ' % i, im0s.copy(), count
+
+    # Run tracker
+    detections = []
+    if len(det):
+        boxes = scale_coords(img.shape[2:], det[:, :4], im0.shape)
+        boxes = boxes.cpu().numpy()
+        detections = det.cpu().numpy()
+        detections[:, :4] = boxes
+
+    online_targets = tracker.update(detections, im0)
+
+    online_tlwhs = []
+    online_ids = []
+    online_scores = []
+    online_cls = []
+    judge = []
+    for t in online_targets:
+        tlwh = t.tlwh
+        tlbr = t.tlbr
+        tid = t.track_id
+        tcls = t.cls
+        judge.append(tid)
+        if tlwh[2] * tlwh[3] > opt.min_box_area:
+            online_tlwhs.append(tlwh)
+            online_ids.append(tid)
+            online_scores.append(t.score)
+            online_cls.append(t.cls)
+
+            # save results
+            results.append(
+                f"{i + 1},{tid},{tlwh[0]:.2f},{tlwh[1]:.2f},{tlwh[2]:.2f},{tlwh[3]:.2f},{t.score:.2f},-1,-1,-1\n"
+            )
+
+            if opt.hide_labels_name:
+                label = f'{tid}, {int(tcls)}'
+            else:
+                label = f'{tid}, {names[int(tcls)]}'
+            if tid in tp_ids:
+                im0 = plot_one_box(tlbr, im0, label=label, color=(0,255,0), line_thickness=2)
+            else:
+                im0 = plot_one_box(tlbr, im0, label=label, color=(255,0,0), line_thickness=2)
+            # im0 = plot_one_box(tlbr, im0, label=label, color=colors[int(tid) % len(colors)], line_thickness=2)
+    n = 0
+    for i, tp_id in enumerate(tp_ids):
+        if (tp_id not in judge):
+            unconfirmed_tp_ids.append(tp_id)
+            unconfirmed_tp_ids_state.append(0)
+            del tp_ids[i - n]
+            n = n + 1
+    n = 0
+    for i, unconfirmed_tp_id in enumerate(unconfirmed_tp_ids):
+        if (unconfirmed_tp_ids_state[i - n] < 360):
+            if (unconfirmed_tp_id in boxes_ids):
+                tp_ids.append(unconfirmed_tp_id)
+                del unconfirmed_tp_ids[i - n]
+                del unconfirmed_tp_ids_state[i - n]
+                n = n + 1
+            else:
+                unconfirmed_tp_ids_state[i - n] = unconfirmed_tp_ids_state[i - n] + 1
+        else:
+            del unconfirmed_tp_ids[i - n]
+            del unconfirmed_tp_ids_state[i - n]
+            n = n + 1
+
+    boxes_tlwhs = copy.deepcopy(online_tlwhs)
+    boxes_ids = copy.deepcopy(online_ids)
+
+    Label,im0 = magnify(boxes_ids,boxes_tlwhs,tp_ids,Label,im0)
+
+    im0 = cv2.cvtColor(im0, cv2.COLOR_BGR2RGBA)
+    img = Image.fromarray(im0)  # 将图像转换为Image对象
+    photo_image = ImageTk.PhotoImage(image=img)  # 将Image对象转换为PhotoImage对象
+    Label.config(image=photo_image)
+    Label.image = photo_image
+    window.after(10, update,opt,model,cap,device,half,tracker,imgsz,stride,count,names,colors,window,Label)
 
 def on_click_left(event):
     global boxes_tlwhs
@@ -232,6 +351,7 @@ def track_everything():
     global mode
     mode = 1
     print('everything')
+
 
 def detect():
     print('++++++++++++++++++')
