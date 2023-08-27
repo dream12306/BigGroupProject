@@ -74,6 +74,7 @@ python tools/mc_demo_yolov7.py --weights pretrained/yolov7x.pt --source 视频�
 如要识别其他类别对象，可再添加--class 0 1 等整数
 
 ## 程序相关
+### 主要文件：tools/mc_demo_yolov7_camera.py
 
 ### 使用的函数：
 
