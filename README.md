@@ -60,7 +60,7 @@ faiss-gpu==1.72
 在“BoT-SORT-main/”文件夹内，在命令行窗口运行：
 
 ```
-python tools/mc_demo_yolov7_webcam.py
+python tools/mc_demo_yolov7_camera.py
 ```
 
 ### 视频人体识别
