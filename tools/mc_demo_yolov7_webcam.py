@@ -12,12 +12,12 @@ import torch.backends.cudnn as cudnn
 from numpy import random
 import numpy as np
 import tkinter as tk
-from PIL import Image,ImageTk
+from PIL import Image, ImageTk
 import copyOfWebcam
 
 from yolov7.models.experimental import attempt_load
 from yolov7.utils.datasets import letterbox
-from yolov7.utils.general import check_img_size, non_max_suppression,scale_coords, strip_optimizer, set_logging
+from yolov7.utils.general import check_img_size, non_max_suppression, scale_coords, strip_optimizer, set_logging
 from yolov7.utils.plots import plot_one_box
 from yolov7.utils.torch_utils import select_device, time_synchronized, TracedModel
 
@@ -25,7 +25,6 @@ from tracker.mc_bot_sort import BoTSORT
 
 sys.path.insert(0, './yolov7')
 sys.path.append('.')
-
 
 boxes_tlwhs = []
 boxes_ids = []
@@ -36,20 +35,121 @@ offset_x = 0
 offset_y = 0
 big_state = 1
 zoom_factor = 1
-size = (640,480)
-mode = 1 # everything:1,humanonly:0
+size = (640, 480)
+mode = 1  # everything:1,humanonly:0
 
 
 def magnify(boxes_ids, boxes_tlwhs, tp_ids, Label, img):
-    pass
+    global zoom_factor
+    global offset_x
+    global offset_y
+    global big_state
+    if len(tp_ids) > 0:
+        tp_id = tp_ids[0]
+    else:
+        return Label,img
+
+    if len(tp_ids) == 1 and big_state and tp_id in boxes_ids:
+        # 调整画面位置使目标对象始终在画面中央
+        # 假设只追踪第一个目标对象
+        index = boxes_ids.index(tp_id)
+        tp_tlwh = boxes_tlwhs[index]
+        x1, y1, w, h = tp_tlwh
+        x2 = x1 + w
+        y2 = y1 + h
+        # 画布大小
+        canvas_width = size[0]
+        canvas_height = size[1]
+
+        if y1 < 0:
+            y1 = 0
+            y2 = min(canvas_height, y2)
+        if y2 > canvas_height:
+            y2 = canvas_height
+            y1 = max(0, y1)
+        if x1 < 0:
+            x1 = 0
+            x2 = min(canvas_width, x2)
+        if x2 > canvas_width:
+            x2 = canvas_width
+            x1 = max(0, x1)
+
+        # 要放大的区域的中心坐标
+        target_center_x = (x1 + x2) / 2
+        target_center_y = (y1 + y2) / 2
+        # 画布的中心坐标
+        canvas_center_x = canvas_width / 2
+        canvas_center_y = canvas_height / 2
+        # 要放大的区域的尺寸
+        target_width = x2 - x1
+        target_height = y2 - y1
+
+        # 放大倍数
+        zoom_factor = min(canvas_width / target_width, canvas_height / target_height)
+
+        # 计算放大后的区域大小
+        all_width = int(canvas_width * zoom_factor)
+        all_height = int(canvas_height * zoom_factor)
+        zoomed_width = int(target_width * zoom_factor)
+        zoomed_height = int(target_height * zoom_factor)
+
+        # 计算放大后的区域左上角坐标
+        zoomed_x1 = int(canvas_center_x - zoomed_width / 2)
+        zoomed_y1 = int(canvas_center_y - zoomed_height / 2)
+
+        # 计算鼠标横纵坐标偏置
+        offset_x = int(target_center_x * zoom_factor - canvas_width / 2)
+        offset_y = int(target_center_y * zoom_factor - canvas_height / 2)
+
+        # 裁剪图像，获取要放大的区域
+        zoomed_img = img[int(y1):int(y2), int(x1):int(x2)]
+        # 将整张图片放大，再从中截取目标区域
+        img = cv2.resize(img, (all_width, all_height))
+
+        image_y1 = int(target_center_y * zoom_factor - canvas_height / 2)
+        image_y2 = int(target_center_y * zoom_factor + canvas_height / 2)
+        image_x1 = int(target_center_x * zoom_factor - canvas_width / 2)
+        image_x2 = int(target_center_x * zoom_factor + canvas_width / 2)
+        # 越限坐标处理
+        if image_y1 < 0:
+            image_y1 = 0
+            image_y2 = canvas_height
+        if image_y2 > all_height:
+            image_y2 = all_height
+            image_y1 = all_height - canvas_height
+        if image_x1 < 0:
+            image_x1 = 0
+            image_x2 = canvas_width
+        if image_x2 > all_width:
+            image_x2 = all_width
+            image_x1 = all_width - canvas_width
+        # 截取目标区域
+        img = img[image_y1:image_y2, image_x1:image_x2]
+
+
+    else:
+        # 放大倍数
+        zoom_factor = 1
+        # 鼠标横纵坐标偏置
+        offset_x = 0
+        offset_y = 0
+
+    return Label, img
 
 
 def Mouse_Coordinate_Conversion(x,y):
-    pass
+    global big_state
+    global zoom_factor
+    global offset_x
+    global offset_y
+    x = (x + offset_x * big_state) / zoom_factor
+    y = (y + offset_y * big_state) / zoom_factor
+    return x, y
 
 
-def update(opt,model,cap,device,half,tracker,imgsz,stride,count,names,colors,window,Label):
+def update(opt, model, cap, device, half, tracker, imgsz, stride, count, names, colors, window, Label):
     pass
+
 
 def on_click_left(event):
     pass
@@ -58,8 +158,10 @@ def on_click_left(event):
 def on_click_right(event):
     pass
 
+
 def track_all():
     pass
+
 
 # 取消跟踪
 def cancel_tracking():
@@ -71,13 +173,14 @@ def cancel_zoom():
     pass
 
 
-
 # 放大模式
 def zoom():
     pass
 
+
 def track_human():
     pass
+
 
 def track_everything():
     pass
