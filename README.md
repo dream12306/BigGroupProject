@@ -1,10 +1,10 @@
 # README——基于yolov7和BOTSORT的人体识别与追踪
 
-## 小组信息
+## 一、小组信息
 
 ### 成员信息
 
-#### 刘向前U202112570（组长），朱龙天 U202112587，陈雨奇U202112563，刘源浩U202112545。
+####  刘向前U202112570（组长），朱龙天 U202112587，陈雨奇U202112563，刘源浩U202112545。
 
 ### 组内分工
 
@@ -13,7 +13,57 @@
 3. 朱龙天：图像放大显示函数magnify()以及鼠标坐标转换函数的实现。
 4. 陈雨奇： 选定追踪目标的事件处理函数，与程序运行状态相关的函数的实现。
 
-## 基础环境
+## 二、项目介绍
+
+​		本项目，旨在利用BOTSORT框架与yolo模型，找出图像、视频或摄像头读取到的视频帧中所有的行人或物体，包括位置和大小，并用矩形框与唯一id标识出来。在此基础上，可以人为选中跟踪目标做出特别标识，目前设计的选定方式为鼠标左键点击相应的检测框，取消选定的方式为鼠标右键点击相应的检测框。同时也可以自行更换跟踪模式，如只标识出人类，或标识出其他任何可标识的物体两种模式。
+
+### 项目文件夹
+
+项目框架克隆于[NirAharon/BoT-SORT: BoT-SORT: Robust Associations Multi-Pedestrian Tracking (github.com)](https://github.com/NirAharon/BoT-SORT)
+
+#### 1.小组作业所在文件夹：
+
+我们小组编写的利用框架中提供的函数与类实现人体检测与跟踪的主体程序见“BoT-SORT-main/tools/mc_demo_yolov7_camera.py”(通过摄像头实时识别)，tools/tools/mc_demo_yolov7.py是框架本身提供的识别本地视频的demo
+
+#### 2.YOLO模型文件夹：
+
+本程序使用的模型为yolov7，所用到的与模型相关的工具函数或者类存在于“BoT-SORT-main/yolov7“中
+
+#### 3.程序使用的模型文件：
+
+人体识别模型文件：BoT-SORT-main/pretrained/yolov7x.pt
+
+REID模型文件：BoT-SORT-main/pretrained/mot17_sbs_S50.pth
+
+#### 4.课程报告位置：
+
+##### 见“BoT-SORT-main/”根目录“基于yolov7和BOTSORT的人体识别与跟踪—课程报告”
+
+#### 5.其它重要文件夹简介
+
+```
+1.tools文件夹：该文件夹包含了一些工具脚本，用于辅助程序的运行和功能实现。
+
+2.pretrained文件夹：该文件夹包含了预训练的模型文件，这些模型文件可以用于目标检测和跟踪任务。
+
+3.runs文件夹：该文件夹用于存放程序运行时生成的结果文件，包括检测结果、跟踪结果等。
+
+4.fast_reid文件夹：该文件夹包含了用于行人重识别（ReID）数据准备与模型训练的相关代码和配置文件。
+
+5.yolov7/data文件夹：该文件夹用于存放程序运行时需要的数据文件，例如类别标签、颜色等。
+
+6.yolov7/models文件夹：该文件夹包含了程序使用的模型定义和相关代码。
+
+7.yolov7/utils文件夹：该文件夹包含了一些辅助函数和工具类，用于程序的各种操作和功能实现。
+
+8.config.py文件：该文件是程序的配置文件，包含了各种参数和选项的设置。
+```
+
+
+
+## 三、基础环境
+
+### LINUX(Ubuntu 22.04.2 LTS)
 
 ### python=3.9.17
 
@@ -53,9 +103,9 @@ onnx-simplifier==0.3.5
 faiss-gpu==1.72
 ```
 
-## 运行方式
+## 四、运行方式
 
-### 摄像头实时识别：
+### 摄像头实时识别与追踪：
 
 在“BoT-SORT-main/”文件夹内，在命令行窗口运行：
 
@@ -73,8 +123,9 @@ python tools/mc_demo_yolov7.py --weights pretrained/yolov7x.pt --source 视频�
 
 如要识别其他类别对象，可再添加--class 0 1 等整数
 
-## 程序相关
-### 主要文件：tools/mc_demo_yolov7_camera.py
+程序运行结果见BoT-SORT-main/runs/detect/文件夹
+
+## 五、程序相关
 
 ### 使用的函数：
 
@@ -175,4 +226,4 @@ Label（Tkinter标签对象）
 
 ```
 
-## 视频识别测试结果见BoT-SORT-main/runs/detect/exp/palace_result.mp4
+## 六、视频识别测试结果见BoT-SORT-main/runs/detect/exp/palace_result.mp4
